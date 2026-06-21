@@ -218,6 +218,11 @@ h2 {
   box-shadow: inset 0 0 0 2px #d8a840;
 }
 
+.day-button.range-start {
+  outline: 3px solid rgba(216, 168, 64, 0.55);
+  outline-offset: 2px;
+}
+
 .day-button.selected {
   border-color: #23736b;
   color: #ffffff;

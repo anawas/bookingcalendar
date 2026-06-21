@@ -8,6 +8,7 @@ interface CalendarDay {
   dayOfMonth: number;
   inCurrentMonth: boolean;
   isToday: boolean;
+  isRangeStart: boolean;
   status: DayStatus;
 }
 
@@ -39,6 +40,7 @@ const unavailableDates = new Set<string>([
 ]);
 
 const selectedDates = new Set<string>();
+let rangeStartDate: string | null = null;
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthFormatter = new Intl.DateTimeFormat("en", {
@@ -111,6 +113,7 @@ function renderDayButton(day: CalendarDay): string {
     "day-button",
     day.inCurrentMonth ? "" : "outside-month",
     day.isToday ? "today" : "",
+    day.isRangeStart ? "range-start" : "",
     day.status
   ]
     .filter(Boolean)
@@ -176,6 +179,7 @@ function getCalendarDays(month: Date): CalendarDay[] {
       dayOfMonth: date.getDate(),
       inCurrentMonth,
       isToday: iso === toIsoDate(today),
+      isRangeStart: iso === rangeStartDate,
       status
     };
   });
@@ -207,6 +211,56 @@ function statusLabel(status: DayStatus): string {
 
 function getSortedSelectedDates(): string[] {
   return [...selectedDates].sort((first, second) => first.localeCompare(second));
+}
+
+function selectDate(iso: string): void {
+  if (selectedDates.has(iso)) {
+    selectedDates.delete(iso);
+
+    if (rangeStartDate === iso) {
+      rangeStartDate = null;
+    }
+
+    return;
+  }
+
+  if (!rangeStartDate || !selectedDates.has(rangeStartDate)) {
+    selectedDates.add(iso);
+    rangeStartDate = iso;
+    return;
+  }
+
+  const rangeDates = getIsoDateRange(rangeStartDate, iso);
+  const unavailableDatesInRange = rangeDates.filter((rangeDate) => unavailableDates.has(rangeDate));
+
+  if (unavailableDatesInRange.length > 0) {
+    const dates = unavailableDatesInRange
+      .map((rangeDate) => dayFormatter.format(fromIsoDate(rangeDate)))
+      .join(", ");
+    window.alert(`That booking range includes unavailable days: ${dates}.`);
+    return;
+  }
+
+  rangeDates.forEach((rangeDate) => selectedDates.add(rangeDate));
+  rangeStartDate = null;
+}
+
+function getIsoDateRange(startIso: string, endIso: string): string[] {
+  const start = fromIsoDate(startIso);
+  const end = fromIsoDate(endIso);
+  const direction = start <= end ? 1 : -1;
+  const dates: string[] = [];
+  let current = start;
+
+  while (true) {
+    dates.push(toIsoDate(current));
+
+    if (toIsoDate(current) === endIso) {
+      return dates;
+    }
+
+    current = addDays(current, direction);
+  }
 }
 
 function toIsoDate(date: Date): string {
@@ -262,19 +316,17 @@ app.addEventListener("click", (event) => {
 
   if (removeButton?.dataset.removeDate) {
     selectedDates.delete(removeButton.dataset.removeDate);
+
+    if (rangeStartDate === removeButton.dataset.removeDate) {
+      rangeStartDate = null;
+    }
+
     render();
     return;
   }
 
   if (dateButton?.dataset.date && !dateButton.disabled) {
-    const iso = dateButton.dataset.date;
-
-    if (selectedDates.has(iso)) {
-      selectedDates.delete(iso);
-    } else {
-      selectedDates.add(iso);
-    }
-
+    selectDate(dateButton.dataset.date);
     render();
   }
 });
