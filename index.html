@@ -6,7 +6,59 @@
     <title>Holiday Cottage Calendar</title>
   </head>
   <body>
-    <main id="app"></main>
+    <main id="app">
+      <section class="booking-shell" aria-labelledby="calendar-title">
+        <div class="booking-header">
+          <div>
+            <p class="eyebrow">Holiday cottage</p>
+            <h1 id="calendar-title">Book available days</h1>
+          </div>
+          <div class="legend" aria-label="Calendar legend">
+            <span><i class="legend-dot available"></i>Available</span>
+            <span><i class="legend-dot selected"></i>Selected</span>
+            <span><i class="legend-dot unavailable"></i>Unavailable</span>
+          </div>
+        </div>
+
+        <div class="calendar-layout">
+          <section class="calendar-panel" aria-label="Calendar">
+            <div class="calendar-toolbar">
+              <button class="icon-button" type="button" data-action="previous-month" aria-label="Previous month" title="Previous month">
+                <span aria-hidden="true">&lt;</span>
+              </button>
+              <h2 id="month-label"></h2>
+              <button class="icon-button" type="button" data-action="next-month" aria-label="Next month" title="Next month">
+                <span aria-hidden="true">&gt;</span>
+              </button>
+            </div>
+
+            <div class="weekday-row" aria-hidden="true">
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+              <span>Sun</span>
+            </div>
+
+            <div id="calendar-grid" class="calendar-grid"></div>
+          </section>
+
+          <aside class="summary-panel" aria-label="Booking summary">
+            <div class="summary-topline">
+              <p class="eyebrow">Your booking</p>
+              <strong id="selected-count"></strong>
+            </div>
+            <p id="empty-selection" class="empty-state">Choose one or more available days in the calendar.</p>
+            <ul id="selected-list" class="selected-list" hidden></ul>
+            <button id="confirm-booking" class="primary-button" type="button" data-action="confirm-booking" disabled>
+              Confirm booking
+            </button>
+          </aside>
+        </div>
+      </section>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

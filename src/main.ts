@@ -19,6 +19,12 @@ if (!appRoot) {
 }
 
 const app = appRoot;
+const monthLabel = getRequiredElement<HTMLHeadingElement>("#month-label");
+const calendarGrid = getRequiredElement<HTMLDivElement>("#calendar-grid");
+const selectedCount = getRequiredElement<HTMLElement>("#selected-count");
+const emptySelection = getRequiredElement<HTMLParagraphElement>("#empty-selection");
+const selectedListElement = getRequiredElement<HTMLUListElement>("#selected-list");
+const confirmBookingButton = getRequiredElement<HTMLButtonElement>("#confirm-booking");
 
 const today = startOfDay(new Date());
 let visibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -42,7 +48,6 @@ const unavailableDates = new Set<string>([
 const selectedDates = new Set<string>();
 let rangeStartDate: string | null = null;
 
-const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const monthFormatter = new Intl.DateTimeFormat("en", {
   month: "long",
   year: "numeric"
@@ -58,57 +63,14 @@ function render(): void {
   const days = getCalendarDays(visibleMonth);
   const selectedList = getSortedSelectedDates();
 
-  app.innerHTML = `
-    <section class="booking-shell" aria-labelledby="calendar-title">
-      <div class="booking-header">
-        <div>
-          <p class="eyebrow">Holiday cottage</p>
-          <h1 id="calendar-title">Book available days</h1>
-        </div>
-        <div class="legend" aria-label="Calendar legend">
-          <span><i class="legend-dot available"></i>Available</span>
-          <span><i class="legend-dot selected"></i>Selected</span>
-          <span><i class="legend-dot unavailable"></i>Unavailable</span>
-        </div>
-      </div>
-
-      <div class="calendar-layout">
-        <section class="calendar-panel" aria-label="Calendar">
-          <div class="calendar-toolbar">
-            <button class="icon-button" type="button" data-action="previous-month" aria-label="Previous month" title="Previous month">
-              <span aria-hidden="true">&lt;</span>
-            </button>
-            <h2>${monthFormatter.format(visibleMonth)}</h2>
-            <button class="icon-button" type="button" data-action="next-month" aria-label="Next month" title="Next month">
-              <span aria-hidden="true">&gt;</span>
-            </button>
-          </div>
-
-          <div class="weekday-row" aria-hidden="true">
-            ${weekdayLabels.map((weekday) => `<span>${weekday}</span>`).join("")}
-          </div>
-
-          <div class="calendar-grid">
-            ${days.map(renderDayButton).join("")}
-          </div>
-        </section>
-
-        <aside class="summary-panel" aria-label="Booking summary">
-          <div class="summary-topline">
-            <p class="eyebrow">Your booking</p>
-            <strong>${selectedList.length} ${selectedList.length === 1 ? "day" : "days"}</strong>
-          </div>
-          ${renderSelectedDates(selectedList)}
-          <button class="primary-button" type="button" data-action="confirm-booking" ${selectedList.length === 0 ? "disabled" : ""}>
-            Confirm booking
-          </button>
-        </aside>
-      </div>
-    </section>
-  `;
+  monthLabel.textContent = monthFormatter.format(visibleMonth);
+  calendarGrid.replaceChildren(...days.map(createDayButton));
+  selectedCount.textContent = `${selectedList.length} ${selectedList.length === 1 ? "day" : "days"}`;
+  confirmBookingButton.disabled = selectedList.length === 0;
+  renderSelectedDates(selectedList);
 }
 
-function renderDayButton(day: CalendarDay): string {
+function createDayButton(day: CalendarDay): HTMLButtonElement {
   const classNames = [
     "day-button",
     day.inCurrentMonth ? "" : "outside-month",
@@ -118,48 +80,55 @@ function renderDayButton(day: CalendarDay): string {
   ]
     .filter(Boolean)
     .join(" ");
-  const disabled = day.status === "unavailable" ? "disabled" : "";
-  const pressed = day.status === "selected" ? "true" : "false";
   const label = `${dayFormatter.format(day.date)}: ${statusLabel(day.status)}`;
+  const button = document.createElement("button");
+  const dayNumber = document.createElement("span");
 
-  return `
-    <button
-      class="${classNames}"
-      type="button"
-      data-date="${day.iso}"
-      aria-label="${label}"
-      aria-pressed="${pressed}"
-      ${disabled}
-    >
-      <span>${day.dayOfMonth}</span>
-    </button>
-  `;
+  button.className = classNames;
+  button.type = "button";
+  button.dataset.date = day.iso;
+  button.ariaLabel = label;
+  button.ariaPressed = day.status === "selected" ? "true" : "false";
+  button.disabled = day.status === "unavailable";
+
+  dayNumber.textContent = String(day.dayOfMonth);
+  button.append(dayNumber);
+
+  return button;
 }
 
-function renderSelectedDates(selectedList: string[]): string {
+function renderSelectedDates(selectedList: string[]): void {
   if (selectedList.length === 0) {
-    return `
-      <p class="empty-state">Choose one or more available days in the calendar.</p>
-    `;
+    emptySelection.hidden = false;
+    selectedListElement.hidden = true;
+    selectedListElement.replaceChildren();
+    return;
   }
 
-  return `
-    <ul class="selected-list">
-      ${selectedList
-        .map((iso) => {
-          const date = fromIsoDate(iso);
-          return `
-            <li>
-              <span>${dayFormatter.format(date)}</span>
-              <button type="button" class="remove-button" data-remove-date="${iso}" aria-label="Remove ${dayFormatter.format(date)}" title="Remove date">
-                x
-              </button>
-            </li>
-          `;
-        })
-        .join("")}
-    </ul>
-  `;
+  emptySelection.hidden = true;
+  selectedListElement.hidden = false;
+  selectedListElement.replaceChildren(...selectedList.map(createSelectedDateListItem));
+}
+
+function createSelectedDateListItem(iso: string): HTMLLIElement {
+  const date = fromIsoDate(iso);
+  const label = dayFormatter.format(date);
+  const item = document.createElement("li");
+  const text = document.createElement("span");
+  const removeButton = document.createElement("button");
+
+  text.textContent = label;
+
+  removeButton.type = "button";
+  removeButton.className = "remove-button";
+  removeButton.dataset.removeDate = iso;
+  removeButton.ariaLabel = `Remove ${label}`;
+  removeButton.title = "Remove date";
+  removeButton.textContent = "x";
+
+  item.append(text, removeButton);
+
+  return item;
 }
 
 function getCalendarDays(month: Date): CalendarDay[] {
@@ -283,6 +252,16 @@ function addDays(date: Date, days: number): Date {
 
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getRequiredElement<ElementType extends HTMLElement>(selector: string): ElementType {
+  const element = document.querySelector<ElementType>(selector);
+
+  if (!element) {
+    throw new Error(`Required element was not found: ${selector}`);
+  }
+
+  return element;
 }
 
 app.addEventListener("click", (event) => {
